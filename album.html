@@ -96,10 +96,11 @@
     return button;
   }
 
-  // Zoom into the original (not the thumb) with the site-wide zoomPhoto() from site.js
+  // Zoom into the original (not the thumb) with the site-wide zoomPhoto() from site.js, which steps through the album's photos
   function view(ev) {
     ev.preventDefault();
-    zoomPhoto({ src: this.href, alt: this.firstChild.alt });
+    const links = [...document.querySelectorAll(".gallery a")];
+    zoomPhoto(this.firstChild, links.map((a) => ({ src: a.href, alt: a.firstChild.alt })), links.indexOf(this));
   }
 
   // "Oct 10, 2026 – Oct 12, 2026" from photo dates, else the month from the album id

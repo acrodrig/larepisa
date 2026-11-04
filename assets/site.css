@@ -35,6 +35,11 @@ nav a, nav a:hover { color: white; font-weight: 600; letter-spacing: 1px; text-d
 .zoom-overlay { align-items: center; background: rgba(0,0,0,0.9); cursor: zoom-out; display: flex; inset: 0; justify-content: center; position: fixed; z-index: 1000; }
 /* Fixed box + contain: scales up too, since browsers shrink photos tagged with high DPI (e.g. 216 DPI scans show at 1/3 size) */
 .zoom-overlay img { height: 96vh; max-width: none; object-fit: contain; width: 96vw; }
+/* Previous/next arrows over the photo's sides; the overrides undo Skeleton's button style */
+.zoom-overlay button { background: rgba(0, 0, 0, 0.4); border: 0; border-radius: 50%; color: white; font-size: 40px; height: 56px; line-height: 52px; margin: 0; padding: 0; position: absolute; top: calc(50% - 28px); width: 56px; }
+.zoom-overlay button:hover, .zoom-overlay button:focus { background: rgba(0, 0, 0, 0.75); color: white; }
+.zoom-prev { left: 16px; }
+.zoom-next { right: 16px; }
 .gallery a { cursor: zoom-in; }
 .covers { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin-bottom: 30px; }
 .covers a { aspect-ratio: 4 / 3; background-color: #5A1E1B; border-radius: 2px; overflow: hidden; position: relative; }
