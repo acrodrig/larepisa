@@ -1,0 +1,66 @@
+/* Copied from randomcurve.com (acrodrig.github.io assets/styles/site.css), with ochre red in place of its blues */
+
+html { background-color: #5C2A1E; box-sizing: border-box; }
+body { background-color: white; margin: 0; min-height: 100vh; }
+main { display: block; margin-bottom: 50px !important; margin-top: 20px !important; }
+.container { width: 700px; padding: 0 10px; }
+h2 { border-bottom: 1px solid #DDD; }
+a { color: #A6452B; }
+a:hover { color: #7E3220; }
+img { max-width: 100%; }
+
+nav { background-color: #A6452B; box-shadow: 0 2px 2px 0px #BBB; color: white; padding: 10px; position: sticky; top: 0; z-index: 100; }
+nav a, nav a:hover { color: white; font-weight: 600; letter-spacing: 1px; text-decoration: none; }
+
+@media(max-width: 700px) {
+  .container { width: 100%; }
+}
+
+/* === PHOTOS ============================================================= */
+
+.breadcrumb { color: #777; font-size: 13px; margin-bottom: 0; }
+.breadcrumb a { color: inherit; }
+.album-name { margin-bottom: 5px; }
+.album-meta { color: #777; font-size: 13px; }
+/* Album pages: no site header; galleries and cover lists bleed to the full window width (like #bleed) */
+.gallery, .covers { box-sizing: border-box; margin-left: calc(50% - 50vw); padding: 0 8px; width: 100vw; }
+.gallery { column-gap: 8px; columns: 320px; }
+/* Rules (hr, h2 underline) span the same width as the photos; the padding keeps h2 text in the column */
+.bleed-line { box-sizing: border-box; margin-left: calc(50% - 50vw + 8px); padding-left: calc(50vw - 50% - 8px); width: calc(100vw - 16px); }
+.gallery a { break-inside: avoid; display: block; margin-bottom: 8px; position: relative; }
+.gallery img { border-radius: 2px; display: block; height: auto; width: 100%; }
+
+/* === PHOTO ZOOM ========================================================= */
+
+.zoom-overlay { align-items: center; background: rgba(0,0,0,0.9); cursor: zoom-out; display: flex; inset: 0; justify-content: center; position: fixed; z-index: 1000; }
+/* Fixed box + contain: scales up too, since browsers shrink photos tagged with high DPI (e.g. 216 DPI scans show at 1/3 size) */
+.zoom-overlay img { height: 96vh; max-width: none; object-fit: contain; width: 96vw; }
+.gallery a { cursor: zoom-in; }
+.covers { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin-bottom: 30px; }
+.covers a { aspect-ratio: 4 / 3; background-color: #5C2A1E; border-radius: 2px; overflow: hidden; position: relative; }
+.covers img { height: 100%; object-fit: cover; transition: transform 0.3s; width: 100%; }
+.covers a:hover img { transform: scale(1.05); }
+/* Name in white over a dark fade so it stays readable on bright photos */
+.covers span, .gallery span { background: linear-gradient(transparent, rgba(0, 0, 0, 0.7)); bottom: 0; color: white; font-size: 14px; font-weight: 600; left: 0; line-height: 1.3; padding: 20px 8px 6px; position: absolute; right: 0; }
+/* Album month ("February 2011") on its own line under the name */
+.covers small { display: block; font-size: 12px; font-weight: 400; opacity: 0.85; }
+/* Album photos show their file name only on hover (or keyboard focus) */
+.gallery span { font-size: 12px; opacity: 0; transition: opacity 0.2s; }
+.gallery a:hover span, .gallery a:focus-visible span { opacity: 1; }
+/* Thumbs up/down and cover, also only on hover; a logged vote or the cover stays green with a tick (and visible without hover), a failed one flashes red */
+.gallery .votes { display: flex; gap: 4px; opacity: 0; position: absolute; right: 6px; top: 6px; transition: opacity 0.2s; }
+.gallery a:hover .votes, .gallery a:focus-within .votes, .gallery .votes:has(.voted) { opacity: 1; }
+.gallery a:not(:hover, :focus-within) .votes button:not(.voted) { opacity: 0; }
+.votes button { background: rgba(0, 0, 0, 0.6); border: 0; border-radius: 4px; cursor: pointer; font-size: 16px; line-height: 1; padding: 5px 6px; position: relative; transition: background 0.2s, opacity 0.2s; }
+.votes button:hover { background: rgba(0, 0, 0, 0.85); }
+.votes button.pending { opacity: 0.5; }
+.votes button.voted { background: #2e7d32; }
+.votes button.failed { background: #c62828; }
+.votes button.voted::after { align-items: center; background: white; border-radius: 50%; bottom: -5px; color: #2e7d32; content: "✓"; display: flex; font-size: 10px; font-weight: 700; height: 14px; justify-content: center; position: absolute; right: -5px; width: 14px; }
+.votes button.pop { animation: vote-pop 0.35s ease-out; }
+.votes button.pop::after { animation: vote-tick 0.35s ease-out; }
+@keyframes vote-pop { 50% { transform: scale(1.25); } }
+@keyframes vote-tick { from { opacity: 0; transform: scale(0); } 70% { transform: scale(1.3); } }
+.year-links a { margin-right: 12px; }
+/* Keep anchored year headings clear of the sticky nav */
+h2.bleed-line { scroll-margin-top: 60px; }

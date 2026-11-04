@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#A6452B">
+  <title>La Repisa</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway:400,300,600">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.css">
+  <link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+  <nav><div class="container"><a href="/">La Repisa</a></div></nav>
+  <main class="container">
+<h1 class="album-name">Photos</h1>
+<p id="meta" class="album-meta"></p>
+<p id="year-links" class="year-links"></p>
+<div id="years"></div>
+
+<script src="/assets/signin.js"></script>
+<script>
+  // Same base as album.html
+  const PHOTOS = "https://storage.googleapis.com/media.randomcurve.com/photos/";
+
+  // One section per year (newest first), each with its album covers (newest month first) linking to album.html
+  async function showYears() {
+    const meta = document.getElementById("meta");
+    const [res, overrides] = await Promise.all([fetch(PHOTOS + "albums/index.json"), loadOverrides(PHOTOS)]);
+    const { excluded, covers } = overrides;
+    if (!res.ok) return meta.textContent = "Photos are not available.";
+    // index.json counts every photo: those voted 👎 come off as the page loads, and albums left empty are not listed
+    const hidden = Map.groupBy(excluded, (path) => path.slice(0, path.lastIndexOf("/")).replaceAll(" ", "-"));
+    const albums = (await res.json()).map((a) => {
+      const id = a.id.normalize("NFC"), chosen = covers[id];
+      const [cover, thumb] = chosen ? [chosen.cover, chosen.thumb] : excluded.has(a.cover?.normalize("NFC")) ? [] : [a.cover, a.thumb];
+      return { ...a, cover, thumb, photos: a.photos - (hidden.get(id)?.length ?? 0) };
+    }).filter((a) => a.photos > 0);
+    meta.textContent = count(albums);
+
+    const years = [...Map.groupBy(albums, (a) => a.id.slice(0, 4))].reverse();
+    document.getElementById("year-links").innerHTML = years.map(([year]) => `<a href="#${year}">${year}</a>`).join(" ");
+    document.getElementById("years").replaceChildren(...years.map(([year, list]) => {
+      const section = document.createElement("section");
+      section.innerHTML = `<h2 id="${year}" class="bleed-line">${year}</h2><p class="album-meta">${count(list)}</p><div class="covers"></div>`;
+      // ids are "YYYY/YYYY-MM-Name": month descending, then name ascending within a month
+      const sorted = list.toSorted((a, b) => month(b).localeCompare(month(a)) || a.name.localeCompare(b.name));
+      // The year's ❤️ photos come first, as a Favorites album that is not counted with the others
+      const favorites = yearFavorites(overrides, year);
+      if (favorites.length) sorted.unshift({ id: `${year}/Favorites`, name: "Favorites", cover: favorites[0].filename, thumb: favorites[0].thumb, photos: favorites.length });
+      section.querySelector(".covers").append(...sorted.map(cover));
+      return section;
+    }));
+    // The sections did not exist when the browser tried to follow a #year in the URL
+    if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+  }
+
+  // "31 albums · 1,681 photos"
+  function count(albums) {
+    const photos = albums.reduce((n, a) => n + a.photos, 0);
+    return `${albums.length} album${albums.length === 1 ? "" : "s"} · ${photos.toLocaleString("en-US")} photo${photos === 1 ? "" : "s"}`;
+  }
+
+  // "2011/2011-02-Los-Angeles" -> "2011-02"
+  const month = (album) => album.id.slice(5, 12);
+
+  // "2011-02" -> "February 2011"
+  function monthName(album) {
+    const [year, m] = month(album).split("-").map(Number);
+    return new Date(Date.UTC(year, m - 1)).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  }
+
+  function cover(album) {
+    const a = Object.assign(document.createElement("a"), { href: `/album.html?${album.id}`, title: `${album.name} (${album.photos} photos)` });
+    if (album.cover) a.append(Object.assign(document.createElement("img"), { src: PHOTOS + encodeURI(album.thumb ?? album.cover), alt: "", loading: "lazy", onerror() { this.remove(); } }));
+    const name = Object.assign(document.createElement("span"), { textContent: album.name });
+    name.append(Object.assign(document.createElement("small"), { textContent: album.id.endsWith("/Favorites") ? album.id.slice(0, 4) : monthName(album) }));
+    a.append(name);
+    return a;
+  }
+
+  signInThen(document.getElementById("year-links"), showYears);
+</script>
+  </main>
+  <script src="/assets/site.js"></script>
+</body>
+</html>
