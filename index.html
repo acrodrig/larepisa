@@ -22,11 +22,12 @@
 <script>
   // Same base as album.html
   const PHOTOS = "https://storage.googleapis.com/media.randomcurve.com/photos/";
+  const BUCKET = PHOTOS.replace(/photos\/$/, ""); // video paths start at the bucket root ("videos/2016/…")
 
-  // One section per year (newest first), each with its album covers (newest month first) linking to album.html
+  // One section per year (newest first), each with its album covers (newest month first, then the year's videos) linking to album.html
   async function showYears() {
     const meta = document.getElementById("meta");
-    const [res, overrides] = await Promise.all([fetch(PHOTOS + "albums/index.json"), loadOverrides(PHOTOS)]);
+    const [res, overrides, videos] = await Promise.all([fetch(PHOTOS + "albums/index.json"), loadOverrides(PHOTOS), loadVideos()]);
     const { excluded, covers } = overrides;
     if (!res.ok) return meta.textContent = "Photos are not available.";
     // index.json counts every photo: those voted 👎 come off as the page loads, and albums left empty are not listed
@@ -38,7 +39,11 @@
     }).filter((a) => a.photos > 0);
     meta.textContent = count(albums);
 
-    const years = [...Map.groupBy(albums, (a) => a.id.slice(0, 4))].reverse();
+    // Videos voted 👎 are left out too; a year with videos but no photo albums still gets a section
+    const yearVideos = Map.groupBy(videos.filter((v) => !excluded.has(v.filename.normalize("NFC"))), (v) => v.filename.slice(7, 11));
+    const byYear = Map.groupBy(albums, (a) => a.id.slice(0, 4));
+    for (const year of yearVideos.keys()) if (!byYear.has(year)) byYear.set(year, []);
+    const years = [...byYear].sort(([a], [b]) => b.localeCompare(a));
     document.getElementById("year-links").innerHTML = years.map(([year]) => `<a href="#${year}">${year}</a>`).join(" ");
     document.getElementById("years").replaceChildren(...years.map(([year, list]) => {
       const section = document.createElement("section");
@@ -48,6 +53,12 @@
       // The year's ❤️ photos come first, as a Favorites album that is not counted with the others
       const favorites = yearFavorites(overrides, year);
       if (favorites.length) sorted.unshift({ id: `${year}/Favorites`, name: "Favorites", cover: favorites[0].filename, thumb: favorites[0].thumb, photos: favorites.length });
+      // The year's videos come last, as a Videos album that is not counted with the photos either
+      const clips = yearVideos.get(year);
+      if (clips) {
+        const chosen = covers[`${year}/Videos`]?.cover?.normalize("NFC");
+        sorted.push({ id: `${year}/Videos`, name: "Videos", cover: (clips.find((v) => v.filename.normalize("NFC") === chosen) ?? clips[0]).filename, video: true, photos: clips.length });
+      }
       section.querySelector(".covers").append(...sorted.map(cover));
       return section;
     }));
@@ -71,10 +82,12 @@
   }
 
   function cover(album) {
-    const a = Object.assign(document.createElement("a"), { href: `/album.html?${album.id}`, title: `${album.name} (${album.photos} photos)` });
-    if (album.cover) a.append(Object.assign(document.createElement("img"), { src: PHOTOS + encodeURI(album.thumb ?? album.cover), alt: "", loading: "lazy", onerror() { this.remove(); } }));
+    const a = Object.assign(document.createElement("a"), { href: `/album.html?${album.id}`, title: `${album.name} (${album.photos} ${album.video ? "videos" : "photos"})` });
+    // A Videos album shows its cover video's first frames, as videos have no thumbs
+    if (album.video) a.append(Object.assign(document.createElement("video"), { src: BUCKET + encodeURI(album.cover) + "#t=1", muted: true, preload: "metadata", playsInline: true }));
+    else if (album.cover) a.append(Object.assign(document.createElement("img"), { src: PHOTOS + encodeURI(album.thumb ?? album.cover), alt: "", loading: "lazy", onerror() { this.remove(); } }));
     const name = Object.assign(document.createElement("span"), { textContent: album.name });
-    name.append(Object.assign(document.createElement("small"), { textContent: album.id.endsWith("/Favorites") ? album.id.slice(0, 4) : monthName(album) }));
+    name.append(Object.assign(document.createElement("small"), { textContent: /\/(Favorites|Videos)$/.test(album.id) ? album.id.slice(0, 4) : monthName(album) }));
     a.append(name);
     return a;
   }

@@ -49,6 +49,27 @@ async function loadOverrides(photos) {
   return { excluded: new Set(excluded), covers, favorites };
 }
 
+// A year's videos (every year's without `year`) in the bucket under videos/YYYY/, as uploaded from the Videos library,
+// oldest first, as album JSON photos with bucket paths ("videos/2016/IMG_0052.mp4") and the file date rclone kept;
+// listed as the page loads (the bucket is public, so anyone can list it), empty when that fails
+async function loadVideos(year) {
+  const videos = [];
+  let page;
+  do {
+    const query = `prefix=videos/${year ? year + "/" : ""}&fields=items(name,metadata),nextPageToken&maxResults=1000${page ? "&pageToken=" + encodeURIComponent(page) : ""}`;
+    const res = await fetch(`https://storage.googleapis.com/storage/v1/b/media.randomcurve.com/o?${query}`).catch(() => undefined);
+    if (!res?.ok) break;
+    const { items = [], nextPageToken } = await res.json();
+    for (const { name, metadata } of items) {
+      const mtime = metadata?.["goog-reserved-file-mtime"];
+      // Year folders only (a few keep event subfolders); not Sort/, the top-level edits or sidecars
+      if (/^videos\/\d{4}\/(?:[^/]+\/)?[^/]+\.(mov|mp4|m4v|avi|mpe?g|3gp|mts|vob|wmv|mkv)$/i.test(name)) videos.push({ filename: name, date: mtime && new Date(mtime * 1000).toISOString() });
+    }
+    page = nextPageToken;
+  } while (page);
+  return videos.sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "") || a.filename.localeCompare(b.filename));
+}
+
 // A year's ❤️ photos that are not 👎, oldest first, as album JSON photos
 function yearFavorites({ excluded, favorites }, year) {
   return Object.entries(favorites).filter(([path]) => path.startsWith(`${year}/`) && !excluded.has(path)).map(([, photo]) => photo)

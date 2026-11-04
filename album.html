@@ -22,30 +22,35 @@
 <script>
   // Originals and thumbs are served from the Google Cloud bucket `media.randomcurve.com`; its custom domain is HTTP only, which an HTTPS page cannot load (keep in sync with index.html)
   const PHOTOS = "https://storage.googleapis.com/media.randomcurve.com/photos/";
+  const BUCKET = PHOTOS.replace(/photos\/$/, ""); // video paths start at the bucket root ("videos/2016/…")
   const DAY = { month: "short", day: "numeric", year: "numeric" };
   const MONTH = { month: "long", year: "numeric" };
 
-  // Album id comes from the query string, e.g. album.html?1999/1999-07-Graduation, or album.html?1999/Favorites for the year's ❤️ photos
+  // Album id comes from the query string, e.g. album.html?1999/1999-07-Graduation, album.html?1999/Favorites for the year's
+  // ❤️ photos, or album.html?1999/Videos for the year's videos (listed from the bucket)
   async function showAlbum(id) {
     const meta = document.getElementById("meta");
-    const favorites = /^\d{4}\/Favorites$/.test(id);
-    if (!favorites && !/^\d{4}\/\d{4}-\d{2}-[^/.]+$/.test(id)) return meta.textContent = "Album not found.";
-    const [res, overrides] = await Promise.all([favorites || fetch(`${PHOTOS}albums/${id}.json`), loadOverrides(PHOTOS)]);
+    const year = id.slice(0, 4), favorites = /^\d{4}\/Favorites$/.test(id), videos = /^\d{4}\/Videos$/.test(id);
+    if (!favorites && !videos && !/^\d{4}\/\d{4}-\d{2}-[^/.]+$/.test(id)) return meta.textContent = "Album not found.";
+    const [res, overrides] = await Promise.all([favorites || (videos ? loadVideos(year) : fetch(`${PHOTOS}albums/${id}.json`)), loadOverrides(PHOTOS)]);
     const { excluded, covers } = overrides;
-    const album = favorites ? { name: "Favorites", photos: yearFavorites(overrides, id.slice(0, 4)) } : res.ok ? await res.json() : undefined;
+    const album = favorites ? { name: "Favorites", photos: yearFavorites(overrides, year) } : videos ? res.length && { name: "Videos", photos: res } : res.ok ? await res.json() : undefined;
     if (!album) return meta.textContent = "Album not found.";
+    const base = videos ? BUCKET : PHOTOS;
     // Photos voted 👎 are left out as the page loads, without rebuilding the album
     const photos = album.photos.filter((p) => !excluded.has(p.filename.normalize("NFC")));
     const cover = (covers[id.normalize("NFC")]?.cover ?? album.cover)?.normalize("NFC");
 
     document.title = `${album.name} · La Repisa`;
-    document.getElementById("year").textContent = id.slice(0, 4);
+    document.getElementById("year").textContent = year;
     document.getElementById("name").textContent = album.name;
-    meta.textContent = `${photos.length} photos · ${period(photos, id)}`;
+    meta.textContent = `${photos.length} ${videos ? "videos" : "photos"} · ${period(photos, id)}`;
 
     document.getElementById("gallery").replaceChildren(...photos.map((p, i) => {
-      const a = Object.assign(document.createElement("a"), { href: PHOTOS + encodeURI(p.filename), onclick: view });
-      const img = Object.assign(document.createElement("img"), { src: PHOTOS + encodeURI(p.thumb ?? p.filename), alt: `${album.name}, photo ${i + 1}`, loading: "lazy" });
+      const a = Object.assign(document.createElement("a"), { href: base + encodeURI(p.filename), onclick: view });
+      // Videos show their first frames (no thumbs); the browser only fetches enough of the file for that
+      const img = videos ? Object.assign(document.createElement("video"), { src: base + encodeURI(p.filename) + "#t=0.5", muted: true, preload: "metadata", playsInline: true, title: `${album.name}, video ${i + 1}` })
+        : Object.assign(document.createElement("img"), { src: PHOTOS + encodeURI(p.thumb ?? p.filename), alt: `${album.name}, photo ${i + 1}`, loading: "lazy" });
       // Known size reserves the space, so the columns do not jump while loading
       if (p.width && p.height) Object.assign(img, { width: p.width, height: p.height });
       a.append(img, Object.assign(document.createElement("span"), { textContent: p.filename.split("/").pop() }), votes(p, id, { cover: p.filename.normalize("NFC") === cover, favorite: p.filename.normalize("NFC") in overrides.favorites }));
@@ -53,17 +58,19 @@
     }));
   }
 
-  // Thumbs up/down, ❤️ (the year's Favorites album) and 🖼️ (make it the album cover) shown on hover, the last two for
-  // editors only; each click goes to functions/signin with who clicked (see sendSigned() in signin.js). The ❤️ of a
-  // favorite and the current cover's 🖼️ stay marked
+  // Thumbs up/down, ❤️ (the year's Favorites album, not for videos) and 🖼️ (make it the album cover) shown on hover, the
+  // last two for editors only; each click goes to functions/signin with who clicked (see sendSigned() in signin.js). The
+  // ❤️ of a favorite and the current cover's 🖼️ stay marked
   function votes(photo, id, marked) {
     const box = Object.assign(document.createElement("div"), { className: "votes" });
     for (const [vote, label] of [["up", "👍"], ["down", "👎"]]) box.append(button(label, `Thumbs ${vote}`, "vote", () => sendSigned({ photo: photo.filename, vote }), () => box.querySelectorAll(".vote")));
-    // A second click takes the ❤️ back, so the button toggles instead of staying marked
-    const heart = button("❤️", "Favorite", "favorite", () => sendSigned({ ...photo, photo: photo.filename, favorite: !heart.classList.contains("voted") }), () => []);
-    heart.addEventListener("sent", () => heart.classList.toggle("voted"));
-    heart.classList.toggle("voted", marked.favorite);
-    box.append(heart);
+    if (!id.endsWith("/Videos")) {
+      // A second click takes the ❤️ back, so the button toggles instead of staying marked
+      const heart = button("❤️", "Favorite", "favorite", () => sendSigned({ ...photo, photo: photo.filename, favorite: !heart.classList.contains("voted") }), () => []);
+      heart.addEventListener("sent", () => heart.classList.toggle("voted"));
+      heart.classList.toggle("voted", marked.favorite);
+      box.append(heart);
+    }
     // The Favorites album has no cover of its own
     if (id.endsWith("/Favorites")) return box;
     const cover = button("🖼️", "Make it the album cover", "cover", () => sendSigned({ album: id, cover: photo.filename, thumb: photo.thumb }), () => document.querySelectorAll(".votes .cover"));
@@ -96,17 +103,18 @@
     return button;
   }
 
-  // Zoom into the original (not the thumb) with the site-wide zoomPhoto() from site.js, which steps through the album's photos
+  // Zoom into the original (not the thumb) with the site-wide zoomPhoto() from site.js, which steps through the album's
+  // photos (and plays videos)
   function view(ev) {
     ev.preventDefault();
     const links = [...document.querySelectorAll(".gallery a")];
-    zoomPhoto(this.firstChild, links.map((a) => ({ src: a.href, alt: a.firstChild.alt })), links.indexOf(this));
+    zoomPhoto(this.firstChild, links.map((a) => ({ src: a.href, alt: a.firstChild.alt ?? a.firstChild.title, video: a.firstChild.tagName === "VIDEO" })), links.indexOf(this));
   }
 
   // "Oct 10, 2026 – Oct 12, 2026" from photo dates, else the month from the album id
   function period(photos, id) {
     const dates = photos.map((p) => p.date).filter(Boolean).sort();
-    if (!dates.length) return id.endsWith("/Favorites") ? id.slice(0, 4) : new Date(`${id.slice(5, 12)}-15`).toLocaleDateString("en-US", MONTH);
+    if (!dates.length) return /\/(Favorites|Videos)$/.test(id) ? id.slice(0, 4) : new Date(`${id.slice(5, 12)}-15`).toLocaleDateString("en-US", MONTH);
     const [first, last] = [dates[0], dates.at(-1)].map((d) => new Date(d).toLocaleDateString("en-US", DAY));
     return first === last ? first : `${first} – ${last}`;
   }
