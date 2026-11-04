@@ -1,15 +1,15 @@
-/* Copied from randomcurve.com (acrodrig.github.io assets/styles/site.css), with ochre red in place of its blues */
+/* Copied from randomcurve.com (acrodrig.github.io assets/styles/site.css), with brick red in place of its blues */
 
-html { background-color: #5C2A1E; box-sizing: border-box; }
+html { background-color: #5A1E1B; box-sizing: border-box; }
 body { background-color: white; margin: 0; min-height: 100vh; }
 main { display: block; margin-bottom: 50px !important; margin-top: 20px !important; }
 .container { width: 700px; padding: 0 10px; }
 h2 { border-bottom: 1px solid #DDD; }
-a { color: #A6452B; }
-a:hover { color: #7E3220; }
+a { color: #B0352B; }
+a:hover { color: #86261F; }
 img { max-width: 100%; }
 
-nav { background-color: #A6452B; box-shadow: 0 2px 2px 0px #BBB; color: white; padding: 10px; position: sticky; top: 0; z-index: 100; }
+nav { background-color: #B0352B; box-shadow: 0 2px 2px 0px #BBB; color: white; padding: 10px; position: sticky; top: 0; z-index: 100; }
 nav a, nav a:hover { color: white; font-weight: 600; letter-spacing: 1px; text-decoration: none; }
 
 @media(max-width: 700px) {
@@ -37,7 +37,7 @@ nav a, nav a:hover { color: white; font-weight: 600; letter-spacing: 1px; text-d
 .zoom-overlay img { height: 96vh; max-width: none; object-fit: contain; width: 96vw; }
 .gallery a { cursor: zoom-in; }
 .covers { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin-bottom: 30px; }
-.covers a { aspect-ratio: 4 / 3; background-color: #5C2A1E; border-radius: 2px; overflow: hidden; position: relative; }
+.covers a { aspect-ratio: 4 / 3; background-color: #5A1E1B; border-radius: 2px; overflow: hidden; position: relative; }
 .covers img { height: 100%; object-fit: cover; transition: transform 0.3s; width: 100%; }
 .covers a:hover img { transform: scale(1.05); }
 /* Name in white over a dark fade so it stays readable on bright photos */
